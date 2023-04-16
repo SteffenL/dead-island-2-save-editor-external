@@ -1,0 +1,71 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+new file mode 100644
+index 0000000..68c7c03
+--- /dev/null
++++ b/CMakeLists.txt
+@@ -0,0 +1,21 @@
++cmake_minimum_required(VERSION 3.15)
++project(cityhash)
++add_subdirectory(src)
++install(
++    TARGETS cityhash
++    EXPORT cityhash-targets
++    FILE_SET cityhash_headers
++)
++install(
++    EXPORT cityhash-targets
++    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/cityhash)
++configure_package_config_file(
++    cmake/cityhash-config.cmake.in
++    ${CMAKE_CURRENT_BINARY_DIR}/cityhash-config.cmake
++    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/cityhash
++    NO_SET_AND_CHECK_MACRO
++)
++install(FILES
++    ${CMAKE_CURRENT_BINARY_DIR}/cityhash-config.cmake
++    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/cityhash
++)
+diff --git a/cmake/cityhash-config.cmake.in b/cmake/cityhash-config.cmake.in
+new file mode 100644
+index 0000000..789f06e
+--- /dev/null
++++ b/cmake/cityhash-config.cmake.in
+@@ -0,0 +1,2 @@
++@PACKAGE_INIT@
++include("${CMAKE_CURRENT_LIST_DIR}/cityhash-targets.cmake")
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+new file mode 100644
+index 0000000..99b6630
+--- /dev/null
++++ b/src/CMakeLists.txt
+@@ -0,0 +1,18 @@
++include(GNUInstallDirs)
++include(CMakePackageConfigHelpers)
++add_library(cityhash)
++target_sources(cityhash
++    PUBLIC
++        FILE_SET cityhash_headers
++            TYPE HEADERS
++            FILES city.h citycrc.h
++    PRIVATE
++        city.cc
++)
++target_include_directories(cityhash PUBLIC
++    PUBLIC
++        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
++        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
++    PRIVATE
++        src
++)
+diff --git a/src/city.cc b/src/city.cc
+index ef3905b..ec0d396 100644
+--- a/src/city.cc
++++ b/src/city.cc
+@@ -27,7 +27,6 @@
+ // possible hash functions, by using SIMD instructions, or by
+ // compromising on hash quality.
+ 
+-#include "config.h"
+ #include <city.h>
+ 
+ #include <algorithm>
