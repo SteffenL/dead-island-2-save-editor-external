@@ -26,7 +26,7 @@ jobs:
       - check-version
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/steffenl/cxx-builder:1.0
+      image: ghcr.io/steffenl/cxx-builder:1.1
     strategy:
       matrix:
         build-type: [Debug, Release]
