@@ -3,7 +3,7 @@ on: [push, pull_request]
 env:
   GCLOUD_CREDENTIAL_BASE64: ${{ secrets.GCLOUD_CREDENTIAL_BASE64 }}
   # Remove "-dev" only in a release branch.
-  RELEASE_VERSION: 0.3.0-dev
+  RELEASE_VERSION: 0.3.0
   ASSET_NAME_PREFIX: di2se-external-
 jobs:
   check-version:
