@@ -188,6 +188,8 @@ def configure(target: Target):
         "-DCMAKE_PREFIX_PATH=" + install_dir,
         "-DCMAKE_SHARED_LINKER_FLAGS=" + ";".join(link_options),
         "-DPKG_CONFIG_USE_CMAKE_PREFIX_PATH=TRUE",
+        "-DCMAKE_CXX_VISIBILITY_PRESET=hidden",
+        "-DCMAKE_VISIBILITY_INLINES_HIDDEN=TRUE",
         *cmake_platform_args,
         *target.configure_options
     ))
