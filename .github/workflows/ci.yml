@@ -54,6 +54,37 @@ jobs:
           name: dist
           path: dist/*
           retention-days: 1
+  build-macos:
+    needs:
+      - check-version
+    runs-on: macos-12
+    strategy:
+      matrix:
+        build-type: [Debug, Release]
+    steps:
+      - uses: actions/checkout@v3
+      - name: Build
+        env:
+          GCLOUD_BUCKET: ${{ vars.GCLOUD_BUCKET }}
+          CMAKE_BUILD_TYPE: ${{ matrix.build-type }}
+        run: |
+          python3 -m venv .venv || exit 1
+          source .venv/bin/activate || exit 1
+          pip install -r scripts/requirements.txt || exit 1
+          python3 scripts/build.py || exit 1
+        shell: bash
+      - name: Create package
+        run: |
+          mkdir dist || exit 1
+          echo "${{ github.sha }}" > install/version.txt || exit 1
+          build_type=$(echo "${{ matrix.build-type }}" | tr '[:upper:]' '[:lower:]') || exit 1
+          (cd install && tar --create --xz "--file=../dist/${ASSET_NAME_PREFIX}${RELEASE_VERSION}-macos.x86_64.${build_type}.tar.xz" *) || exit 1
+      - uses: actions/upload-artifact@v3
+        if: github.event_name == 'push'
+        with:
+          name: dist
+          path: dist/*
+          retention-days: 1
   build-windows:
     needs:
       - check-version
@@ -92,6 +123,7 @@ jobs:
   publish:
     needs:
       - build-linux
+      - build-macos
       - build-windows
     if: github.event_name == 'push' && github.ref_type == 'tag'
     runs-on: ubuntu-latest

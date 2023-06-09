@@ -24,6 +24,7 @@ class Target:
     source_subdir:  str
     url: str
     configure_options: List[str]
+    cmake_subdir: str= None
     download: Callable[["Target"], None] = None
     source: Callable[["Target"], None] = None
     patch: Callable[["Target"], None] = None
@@ -155,7 +156,7 @@ def configure(target: Target):
         return target.configure(target)
     extract_dir = get_source_extract_dir(target)
     source_dir = os.path.join(
-        extract_dir, expand_target_vars(target, target.source_subdir))
+        extract_dir, expand_target_vars(target, target.cmake_subdir if target.cmake_subdir else target.source_subdir))
     build_dir = os.path.join(BUILD_ROOT_DIR, target.name, target.version)
     if os.path.exists(build_dir + ".configure.ok"):
         return
@@ -164,10 +165,17 @@ def configure(target: Target):
     link_options = []
     if platform.system() == "Linux":
         link_options.append("-static-libstdc++")
+    if platform.system() == "Darwin":
+        cmake_generator = "Xcode"
+    else:
+        cmake_generator = "Ninja"
+    cmake_platform_args = []
+    if platform.system() == "Darwin":
+        cmake_platform_args.append("-DCMAKE_OSX_DEPLOYMENT_TARGET=10.15")
     subprocess.check_call((
         "cmake",
         "-G",
-        "Ninja",
+        cmake_generator,
         "-B",
         build_dir,
         "-S",
@@ -180,6 +188,7 @@ def configure(target: Target):
         "-DCMAKE_PREFIX_PATH=" + install_dir,
         "-DCMAKE_SHARED_LINKER_FLAGS=" + ";".join(link_options),
         "-DPKG_CONFIG_USE_CMAKE_PREFIX_PATH=TRUE",
+        *cmake_platform_args,
         *target.configure_options
     ))
     create_empty_file(build_dir + ".configure.ok")
@@ -197,7 +206,9 @@ def build(target: Target):
     subprocess.check_call((
         "cmake",
         "--build",
-        build_dir
+        build_dir,
+        "--config",
+        os.getenv("CMAKE_BUILD_TYPE", "Release")
     ))
     create_empty_file(build_dir + ".build.ok")
 
@@ -214,7 +225,9 @@ def install(target: Target):
     subprocess.check_call((
         "cmake",
         "--install",
-        build_dir
+        build_dir,
+        "--config",
+        os.getenv("CMAKE_BUILD_TYPE", "Release")
     ))
     create_empty_file(build_dir + ".install.ok")
 
@@ -277,7 +290,7 @@ TARGETS = (
            version="1.5.5",
            sha256="9c4396cc829cfae319a6e2615202e82aad41372073482fce286fac78646d3ee4",
            filename="zstd-{version}.tar.gz",
-           source_subdir="zstd-{version}/build/cmake",
+           source_subdir="zstd-{version}",
            url="https://github.com/facebook/zstd/releases/download/v{version}/{filename}",
            configure_options=(
                "-DZSTD_LEGACY_SUPPORT=OFF",
@@ -285,7 +298,8 @@ TARGETS = (
                "-DZSTD_BUILD_STATIC=ON",
                "-DZSTD_BUILD_SHARED=OFF",
                "-DZSTD_BUILD_TESTS=OFF",
-           )),
+           ),
+           cmake_subdir="zstd-{version}/build/cmake"),
 )
 
 STAGES = (download, source, patch, configure, build, install)
