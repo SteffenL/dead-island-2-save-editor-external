@@ -1,0 +1,60 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 2620102..0d931e0 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -16,6 +16,8 @@ else()
+                        -Wsign-conversion -Weffc++")
+ endif()
+ 
++include(GNUInstallDirs)
++
+ # Build type
+ set(DEFAULT_BUILD_TYPE "Release")
+ if((EXISTS "${CMAKE_SOURCE_DIR}/.svn") OR (EXISTS "${CMAKE_SOURCE_DIR}/.git"))
+@@ -30,7 +32,10 @@ endif()
+ 
+ # Library
+ add_library(rapidcsv INTERFACE)
+-target_include_directories(rapidcsv INTERFACE src)
++target_include_directories(rapidcsv INTERFACE
++  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
++  $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
++)
+ 
+ # Tests
+ option(RAPIDCSV_BUILD_TESTS "Build tests" OFF)
+@@ -219,7 +224,26 @@ if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
+   message(STATUS "Install/uninstall targets enabled.")
+ 
+   # Install
++  include(CMakePackageConfigHelpers)
+   install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/src/rapidcsv.h DESTINATION include)
++  install(
++      TARGETS rapidcsv
++      EXPORT rapidcsv-targets
++      FILE_SET rapidcsv_headers
++  )
++  install(
++      EXPORT rapidcsv-targets
++      DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/rapidcsv)
++  configure_package_config_file(
++      cmake/rapidcsv-config.cmake.in
++      ${CMAKE_CURRENT_BINARY_DIR}/rapidcsv-config.cmake
++      INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/rapidcsv
++      NO_SET_AND_CHECK_MACRO
++  )
++  install(FILES
++      ${CMAKE_CURRENT_BINARY_DIR}/rapidcsv-config.cmake
++      DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/rapidcsv
++  )
+ 
+   # Uninstall
+   add_custom_target(uninstall COMMAND "${CMAKE_COMMAND}" -E remove "${CMAKE_INSTALL_PREFIX}/include/rapidcsv.h"
+diff --git a/cmake/rapidcsv-config.cmake.in b/cmake/rapidcsv-config.cmake.in
+new file mode 100644
+index 0000000..896f932
+--- /dev/null
++++ b/cmake/rapidcsv-config.cmake.in
+@@ -0,0 +1,2 @@
++@PACKAGE_INIT@
++include("${CMAKE_CURRENT_LIST_DIR}/rapidcsv-targets.cmake")
