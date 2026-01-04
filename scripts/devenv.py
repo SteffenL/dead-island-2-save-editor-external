@@ -56,12 +56,15 @@ def find_vcvars(target_arch: Arch):
     return vcvars_path
 
 
-def activate_msvc_toolchain(architecture: Arch, vcvars_version: str):
+def activate_msvc_toolchain(architecture: Arch = None, vcvars_version: str = None):
+    architecture = Arch.X64 if architecture is None else architecture
     vcvars_arch = ARCH_TO_VCVARS_ARCH_MAP[architecture]
     vcvars_path = find_vcvars(architecture)
     # Extract environment variables set by vcvars.
-    vcvars_args = ("cmd.exe", "/C", "call", vcvars_path, vcvars_arch,
-                   "-vcvars_ver=" + vcvars_version, ">", "nul", "&&", "set")
+    vcvars_args = ["cmd.exe", "/C", "call", vcvars_path, vcvars_arch]
+    if vcvars_version is not None:
+        vcvars_args.append("-vcvars_ver=" + vcvars_version)
+    vcvars_args += (">", "nul", "&&", "set")
     vcvars_output_bytes = subprocess.check_output(vcvars_args)
     vcvars_output = vcvars_output_bytes.decode("utf-8").strip()
     vcvars_env = tuple(kv.split("=", 1) for kv in vcvars_output.splitlines())
@@ -72,9 +75,9 @@ def activate_msvc_toolchain(architecture: Arch, vcvars_version: str):
 def main(args: List[str]):
     cmd = None
     if platform.system() == "Windows":
-        arch, vcvars_version = (os.environ["VCVARS_ARCH"],
-                                os.environ["VCVARS_VERSION"])
-        activate_msvc_toolchain(Arch(arch), vcvars_version)
+        arch, vcvars_version = (os.getenv("VCVARS_ARCH"),
+                                os.getenv("VCVARS_VERSION"))
+        activate_msvc_toolchain(None if arch is None else Arch(arch), vcvars_version)
         args = tuple(arg.replace("^", "^^").replace('"', '^"') for arg in args)
         args_string = " ".join(
             tuple(('"{}"'.format(arg) if " " in arg else arg) for arg in args))

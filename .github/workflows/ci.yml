@@ -1,123 +1,122 @@
 name: CI
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - '**'
+  pull_request:
+defaults:
+  run:
+    shell: bash
 env:
   GCLOUD_CREDENTIAL_BASE64: ${{ secrets.GCLOUD_CREDENTIAL_BASE64 }}
   # Remove "-dev" only in a release branch.
   RELEASE_VERSION: 0.4.0-dev
   ASSET_NAME_PREFIX: di2se-external-
 jobs:
-  check-version:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check that release version is proper when pushing a tag
-        if: github.event_name == 'push' && github.ref_type == 'tag'
-        run: |
-          if [[ ! "${RELEASE_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-.+)?$ ]]; then
-            echo "::error::RELEASE_VERSION should be set to a version number."
-            exit 1
-          fi
-          if [[ "${{ github.ref_name }}" != "v${RELEASE_VERSION}" ]]; then
-            echo "::error::Tag name (${{ github.ref_name }}) either doesn't have the proper format or the version in the tag doesn't match the release version (${RELEASE_VERSION})."
-            exit 1
-          fi
-        shell: bash
   build-linux:
-    needs:
-      - check-version
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/steffenl/cxx-builder:1.1
+      image: ghcr.io/steffenl/cxx-builder:1.2
+      volumes:
+        - /node20_glibc2.17:/node20_glibc2.17:rw,rshared
+        - /node20_glibc2.17:/__e/node20:ro,rshared
     strategy:
       matrix:
         build-type: [Debug, Release]
     steps:
-      - uses: actions/checkout@v3
+      - name: Install Node.js 20 for glibc 2.17
+        run: |
+          apt-get install -y curl
+          filename=node-v20.9.0-linux-x64-glibc-217.tar.xz
+          sha256_digest=60342b998325c2fa812741c4618374e039c54c4eab942032a028f08649debb23
+          curl -sSLO "https://unofficial-builds.nodejs.org/download/release/v20.9.0/${filename}"
+          echo "${sha256_digest} *${filename}" | sha256sum -c -
+          tar -xf "${filename}" --strip-components 1 -C /node20_glibc2.17
+          ldd /__e/node20/bin/node
+      - uses: actions/checkout@v4
       - name: Build
         env:
           GCLOUD_BUCKET: ${{ vars.GCLOUD_BUCKET }}
           CMAKE_BUILD_TYPE: ${{ matrix.build-type }}
         run: |
-          python3 -m venv .venv || exit 1
-          source .venv/bin/activate || exit 1
-          pip install -r scripts/requirements.txt || exit 1
-          python3 scripts/build.py || exit 1
-        shell: bash
+          python3 -m venv .venv
+          source .venv/bin/activate
+          pip install -r scripts/requirements.txt
+          python3 scripts/build.py
       - name: Create package
         run: |
-          mkdir dist || exit 1
-          echo "${{ github.sha }}" > install/version.txt || exit 1
-          build_type=$(echo "${{ matrix.build-type }}" | tr '[:upper:]' '[:lower:]') || exit 1
-          (cd install && tar --create --xz "--file=../dist/${ASSET_NAME_PREFIX}${RELEASE_VERSION}-linux.x86_64.${build_type}.tar.xz" *) || exit 1
-      - uses: actions/upload-artifact@v3
+          mkdir dist
+          echo "${{ github.sha }}" > install/version.txt
+          os=$(echo '${{ runner.os }}' | tr '[:upper:]' '[:lower:]')
+          arch=$((if [[ "${OSTYPE}" =~ cygwin|msys ]]; then echo "${PROCESSOR_ARCHITECTURE}"; else uname -m; fi) | tr '[:upper:]' '[:lower:]')
+          build_type=$(echo '${{ matrix.build-type }}' | tr '[:upper:]' '[:lower:]')
+          (cd install && tar --create --xz "--file=../dist/${ASSET_NAME_PREFIX}${RELEASE_VERSION}-${os}.${arch}.${build_type}.tar.xz" *)
+      - uses: actions/upload-artifact@v5
         if: github.event_name == 'push'
         with:
-          name: dist
+          name: dist-${{ runner.os }}-${{ matrix.build-type }}
           path: dist/*
           retention-days: 1
   build-macos:
-    needs:
-      - check-version
-    runs-on: macos-12
+    runs-on: macos-15-intel
     strategy:
       matrix:
         build-type: [Debug, Release]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Build
         env:
           GCLOUD_BUCKET: ${{ vars.GCLOUD_BUCKET }}
           CMAKE_BUILD_TYPE: ${{ matrix.build-type }}
         run: |
-          python3 -m venv .venv || exit 1
-          source .venv/bin/activate || exit 1
-          pip install -r scripts/requirements.txt || exit 1
-          python3 scripts/build.py || exit 1
-        shell: bash
+          python3 -m venv .venv
+          source .venv/bin/activate
+          pip install -r scripts/requirements.txt
+          python3 scripts/build.py
       - name: Create package
         run: |
-          mkdir dist || exit 1
-          echo "${{ github.sha }}" > install/version.txt || exit 1
-          build_type=$(echo "${{ matrix.build-type }}" | tr '[:upper:]' '[:lower:]') || exit 1
-          (cd install && tar --create --xz "--file=../dist/${ASSET_NAME_PREFIX}${RELEASE_VERSION}-macos.x86_64.${build_type}.tar.xz" *) || exit 1
-      - uses: actions/upload-artifact@v3
+          mkdir dist
+          echo "${{ github.sha }}" > install/version.txt
+          os=$(echo '${{ runner.os }}' | tr '[:upper:]' '[:lower:]')
+          arch=$((if [[ "${OSTYPE}" =~ cygwin|msys ]]; then echo "${PROCESSOR_ARCHITECTURE}"; else uname -m; fi) | tr '[:upper:]' '[:lower:]')
+          build_type=$(echo '${{ matrix.build-type }}' | tr '[:upper:]' '[:lower:]')
+          (cd install && tar --create --xz "--file=../dist/${ASSET_NAME_PREFIX}${RELEASE_VERSION}-${os}.${arch}.${build_type}.tar.xz" *)
+      - uses: actions/upload-artifact@v5
         if: github.event_name == 'push'
         with:
-          name: dist
+          name: dist-${{ runner.os }}-${{ matrix.build-type }}
           path: dist/*
           retention-days: 1
   build-windows:
-    needs:
-      - check-version
-    runs-on: windows-2022
+    runs-on: windows-2025
     env:
       VCVARS_ARCH: x64
-      VCVARS_VERSION: '14.3'
     strategy:
       matrix:
         build-type: [Debug, Release]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Build
         env:
           GCLOUD_BUCKET: ${{ vars.GCLOUD_BUCKET }}
           CMAKE_BUILD_TYPE: ${{ matrix.build-type }}
         run: |
-          python3 -m venv .venv || exit 1
-          source .venv/Scripts/activate || exit 1
-          pip install -r scripts/requirements.txt || exit 1
-          python3 scripts/devenv.py python3 scripts/build.py || exit 1
-        shell: bash
+          python3 -m venv .venv
+          source .venv/Scripts/activate
+          pip install -r scripts/requirements.txt
+          python3 scripts/devenv.py python3 scripts/build.py
       - name: Create package
         run: |
-          mkdir dist || exit 1
-          echo "${{ github.sha }}" > install/version.txt || exit 1
-          build_type=$(echo "${{ matrix.build-type }}" | tr '[:upper:]' '[:lower:]') || exit 1
-          (cd install && tar -cJf "../dist/${ASSET_NAME_PREFIX}${RELEASE_VERSION}-windows.amd64.${build_type}.tar.xz" *) || exit 1
-        shell: bash
-      - uses: actions/upload-artifact@v3
+          mkdir dist
+          echo "${{ github.sha }}" > install/version.txt
+          os=$(echo '${{ runner.os }}' | tr '[:upper:]' '[:lower:]')
+          arch=$((if [[ "${OSTYPE}" =~ cygwin|msys ]]; then echo "${PROCESSOR_ARCHITECTURE}"; else uname -m; fi) | tr '[:upper:]' '[:lower:]')
+          build_type=$(echo '${{ matrix.build-type }}' | tr '[:upper:]' '[:lower:]')
+          (cd install && tar --create --xz "--file=../dist/${ASSET_NAME_PREFIX}${RELEASE_VERSION}-${os}.${arch}.${build_type}.tar.xz" *)
+      - uses: actions/upload-artifact@v5
         if: github.event_name == 'push'
         with:
-          name: dist
+          name: dist-${{ runner.os }}-${{ matrix.build-type }}
           path: dist/*
           retention-days: 1
   publish:
@@ -125,21 +124,21 @@ jobs:
       - build-linux
       - build-macos
       - build-windows
-    if: github.event_name == 'push' && github.ref_type == 'tag'
+    if: github.event_name == 'push' && github.ref_type == 'branch' && startsWith(github.ref_name, 'release/')
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Download artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v5
         with:
-          name: dist
+          pattern: dist-*
           path: dist
+          merge-multiple: true
       - name: List artifacts
-        run: find dist/ || exit 1
+        run: find dist/
       - name: Create GitHub Release
         env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh release create --verify-tag --draft --target "${{ github.sha }}" "v${RELEASE_VERSION}" dist/* || exit 1
-        shell: bash
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release create --draft --target "${{ github.sha }}" "v${RELEASE_VERSION}" dist/*
