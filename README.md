@@ -1,8 +1,8 @@
-# DI2SE External
+# Dead Island 2 Save Editor External Libraries
 
-External dependencies/libraries used in [DI2SE](https://steffenl.com/projects/dead-island-2-save-editor) by [Steffen André Langnes](https://steffenl.com).
+External dependencies/libraries used in [Dead Island 2 Save Editor](https://steffenl.com/projects/dead-island-2-save-editor) (CLI) by [Steffen André Langnes](https://steffenl.com).
 
-If you're looking for the save editor, downloads or contact information then please visit the [website DI2SE SaveTailor](https://steffenl.com/projects/dead-island-2-save-editor).
+If you're looking for the save editor, downloads or contact information, please visit the [website for Dead Island 2 Save Editor](https://steffenl.com/projects/dead-island-2-save-editor).
 
 ## Building
 
