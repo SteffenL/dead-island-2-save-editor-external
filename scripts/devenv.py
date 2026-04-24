@@ -8,7 +8,6 @@ from typing import List
 
 class Arch(Enum):
     ARM64 = "arm64"
-    ARM32 = "arm32"
     X64 = "x64"
     X86 = "x86"
 
@@ -16,17 +15,26 @@ class Arch(Enum):
 ARCH_TO_MSVC_COMPONENT_ARCH_MAP = {
     Arch.X64: "x86.x64",
     Arch.X86: "x86.x64",
-    Arch.ARM64: "ARM64",
-    Arch.ARM32: "ARM"
+    Arch.ARM64: "ARM64"
 }
 
 
 ARCH_TO_VCVARS_ARCH_MAP = {
     Arch.X64: "x64",
     Arch.X86: "x86",
-    Arch.ARM64: "arm64",
-    Arch.ARM32: "arm"
+    Arch.ARM64: "arm64"
 }
+
+
+def get_host_arch() -> Arch:
+    arch = platform.machine().lower()
+    if arch in ("amd64", "x86_64"):
+        return Arch.X64
+    if arch == ("i386", "x86"):
+        return Arch.X86
+    if arch == "aarch64":
+       return Arch.ARM64
+    raise Exception("Unsupported host machine architecture.")
 
 
 def find_vcvars(target_arch: Arch):
@@ -57,7 +65,7 @@ def find_vcvars(target_arch: Arch):
 
 
 def activate_msvc_toolchain(architecture: Arch = None, vcvars_version: str = None):
-    architecture = Arch.X64 if architecture is None else architecture
+    architecture = get_host_arch() if architecture is None else architecture
     vcvars_arch = ARCH_TO_VCVARS_ARCH_MAP[architecture]
     vcvars_path = find_vcvars(architecture)
     # Extract environment variables set by vcvars.
@@ -86,7 +94,7 @@ def main(args: List[str]):
         args = tuple(arg.replace("\\", "\\\\").replace('"', '\\"')
                      for arg in args)
         args_string = " ".join(
-            tuple(('"{}"'.format(arg) if " " in arg else arg) for arg in args))
+            tuple("'{}'".format(arg) for arg in args))
         cmd = ("sh", "-c", args_string)
     subprocess.check_call(cmd)
 

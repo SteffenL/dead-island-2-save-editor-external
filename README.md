@@ -10,6 +10,7 @@ Environment variables can be set before running scripts:
 
 | Name                       | Value                | OS      |
 | -------------------------- | -------------------- | ------- |
+| `APPLE_UNIVERSAL_BINARY`   | `OFF` or `ON`        | macoS   |
 | `BUILD_SHARED_LIBS`        | `OFF` or `ON`        | Any     |
 | `CMAKE_BUILD_TYPE`         | `Debug` or `Release` | Any     |
 | `GCLOUD_BUCKET`            | gcloud bucket URI    | Any     |

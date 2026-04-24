@@ -172,6 +172,8 @@ def configure(target: Target):
     cmake_platform_args = []
     if platform.system() == "Darwin":
         cmake_platform_args.append("-DCMAKE_OSX_DEPLOYMENT_TARGET=10.15")
+        if os.getenv("APPLE_UNIVERSAL_BINARY", "off").lower() in ("1", "true", "on"):
+            cmake_platform_args.append("-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64")
     subprocess.check_call((
         "cmake",
         "-G",
