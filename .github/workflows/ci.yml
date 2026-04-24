@@ -68,6 +68,7 @@ jobs:
         env:
           GCLOUD_BUCKET: ${{ vars.GCLOUD_BUCKET }}
           CMAKE_BUILD_TYPE: ${{ matrix.build-type }}
+          APPLE_UNIVERSAL_BINARY: ON
         run: |
           python3 -m venv .venv
           source .venv/bin/activate
@@ -78,7 +79,7 @@ jobs:
           mkdir dist
           echo "${{ github.sha }}" > install/version.txt
           os=$(echo '${{ runner.os }}' | tr '[:upper:]' '[:lower:]')
-          arch=$((if [[ "${OSTYPE}" =~ cygwin|msys ]]; then echo "${PROCESSOR_ARCHITECTURE}"; else uname -m; fi) | tr '[:upper:]' '[:lower:]')
+          arch=universal
           build_type=$(echo '${{ matrix.build-type }}' | tr '[:upper:]' '[:lower:]')
           (cd install && tar --create --xz "--file=../dist/${ASSET_NAME_PREFIX}${RELEASE_VERSION}-${os}.${arch}.${build_type}.tar.xz" *)
       - uses: actions/upload-artifact@v5
