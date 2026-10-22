@@ -32,3 +32,9 @@ Run the build script:
 ```
 python scripts/devenv.py python scripts/build.py
 ```
+
+## License
+
+© 2023 Steffen André Langnes
+
+This project is licensed under `AGPL-3.0-or-later`. See the [`LICENSE`](./LICENSE) file for the full terms.
